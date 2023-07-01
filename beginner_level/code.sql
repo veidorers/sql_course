@@ -49,3 +49,11 @@ WHERE salary IN (1000, 1100, 2000)
    OR (first_name LIKE 'Iv%'
     AND last_name LIKE '%ov')
 ORDER BY first_name DESC, salary DESC;
+
+SELECT
+    lower(first_name),
+--     concat(first_name, ' ',  last_name,  ' has salary - ', salary) something
+    first_name || ' ' || last_name || ' has salary - ' || salary something,
+    now(),
+    2 * 2 + 2
+FROM employee empl;
