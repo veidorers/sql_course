@@ -66,3 +66,27 @@ UNION ALL
 SELECT id, last_name
 FROM employee
 WHERE salary is NULL;
+
+SELECT
+    avg(empl.salary)
+FROM (SELECT
+          *
+      FROM employee
+      ORDER BY salary ASC
+      LIMIT 2) empl;
+
+SELECT *,
+       (SELECT avg(salary) FROM employee),
+       (SELECT max(salary) FROM employee),
+       (SELECT max(salary) from employee) - salary diff
+FROM employee;
+
+SELECT *
+FROM employee
+WHERE company_id IN (select id from company where date > '2000-01-01');
+
+SELECT * FROM (values ('Ivan', 'Sidorov', 500, 1),
+                      ('Ivan', 'Ivanov', 1000, 1),
+                      ('Petr', 'Petrov', 2000, 3),
+                      ('Alexey', 'Alexeev', 1500, NULL),
+                      ('Boris', 'Denisov', NULL, 2)) values;
