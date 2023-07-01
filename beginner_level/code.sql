@@ -57,3 +57,12 @@ SELECT
     now(),
     2 * 2 + 2
 FROM employee empl;
+
+SELECT id, first_name
+FROM employee
+WHERE company_id is NOT NULL
+UNION ALL
+-- UNION
+SELECT id, last_name
+FROM employee
+WHERE salary is NULL;
