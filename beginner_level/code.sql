@@ -39,3 +39,13 @@ values ('Ivan', 'Sidorov', 500, 1),
        ('Petr', 'Petrov', 2000, 3),
        ('Alexey', 'Alexeev', 1500, NULL),
        ('Boris', 'Denisov', NULL, 2);
+
+SELECT DISTINCT id,
+                first_name AS f_name,
+                last_name     l_name,
+                salary
+FROM employee AS empl
+WHERE salary IN (1000, 1100, 2000)
+   OR (first_name LIKE 'Iv%'
+    AND last_name LIKE '%ov')
+ORDER BY first_name DESC, salary DESC;
