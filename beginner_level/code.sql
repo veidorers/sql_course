@@ -106,3 +106,10 @@ WHERE id = 1;
 
 DELETE FROm employee
 WHERE company_id = 1;
+
+--
+
+UPDATE employee
+SET salary = 0
+WHERE salary = (SELECT max(salary) FROM employee)
+RETURNING id, first_name || ' ' || last_name fio, salary;
