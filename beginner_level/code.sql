@@ -90,3 +90,19 @@ SELECT * FROM (values ('Ivan', 'Sidorov', 500, 1),
                       ('Petr', 'Petrov', 2000, 3),
                       ('Alexey', 'Alexeev', 1500, NULL),
                       ('Boris', 'Denisov', NULL, 2)) values;
+
+--
+
+SELECT * FROM employee;
+
+DELETE FROM employee
+WHERE salary IS NULL;
+
+DELETE FROM employee
+WHERE salary = (SELECT max(salary) FROM employee);
+
+DELETE FROM company
+WHERE id = 1;
+
+DELETE FROm employee
+WHERE company_id = 1;
