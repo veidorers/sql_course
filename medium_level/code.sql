@@ -144,3 +144,29 @@ SELECT
     e.first_name
 FROM employee e
          FULL JOIN company c ON e.company_id = c.id;
+
+--
+
+SELECT count(e.id)
+FROM company c
+         LEFT JOIN employee e ON e.company_id = c.id
+WHERE c.name = 'Amazon';
+
+SELECT c.name,
+       count(e.id) --важно по employee.id, так как одна запись в компаниях будет сто процентно, так как используется left join
+FROM company c
+LEFT JOIN employee e on c.id = e.company_id
+GROUP BY c.id --схлопни записи по полю c.id и выполняй count для этих схлопываний (для каждой компании)
+HAVING count(e.id) > 0; --условия на схлопнутые группы
+
+SELECT c.name,
+       e.first_name
+FROM company c
+LEFT JOIN employee e on c.id = e.company_id     --приставь к каждой компании работника по таким условиям
+        AND c.name = 'Amazon';
+
+SELECT c.name,
+       e.first_name
+FROM company c
+LEFT JOIN employee e on c.id = e.company_id
+WHERE c.name = 'Amazon';    --      Where работает после соединения
