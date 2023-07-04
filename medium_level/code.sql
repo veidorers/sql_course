@@ -111,3 +111,36 @@ DROP TABLE employee_contact;
 DROP TABLE contact;
 DROP TABLE employee;
 DROP TABLE company;
+
+--
+
+UPDATE employee
+SET company_id = NULL
+WHERE company_id = 4;
+
+SELECT * FROM employee;
+
+SELECT
+    c.name,
+    e.first_name
+FROM company c
+LEFT JOIN employee e ON c.id = e.company_id;
+
+SELECT
+    c.name,
+    e.first_name
+FROM employee e
+LEFT JOIN company c ON e.company_id = c.id;
+
+SELECT
+    c.name,
+    e.first_name
+FROM employee e
+         RIGHT JOIN company c ON e.company_id = c.id;
+
+
+SELECT
+    c.name,
+    e.first_name
+FROM employee e
+         FULL JOIN company c ON e.company_id = c.id;
