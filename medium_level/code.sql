@@ -170,3 +170,30 @@ SELECT c.name,
 FROM company c
 LEFT JOIN employee e on c.id = e.company_id
 WHERE c.name = 'Amazon';    --      Where работает после соединения
+
+--
+
+INSERT INTO employee (first_name, last_name, company_id, salary)
+VALUES ('Vladimir', 'Filimonov', 1, 2100),
+       ('Matvey', 'Zubkov', 3, 500);
+
+SELECT c.name,
+       e.last_name
+FROM company c
+LEFT JOIN employee e on c.id = e.company_id
+ORDER BY c.name;
+
+SELECT c.name,
+       e.last_name,
+--         count(e.id) OVER(),
+--         max(e.salary) OVER (partition by c.name),
+--         avg(e.salary) OVER ()
+--     row_number() over (),
+--        lag(e.salary) OVER (partition by c.name ORDER BY e.salary) previous,
+       e.salary - lag(e.salary) OVER (order by e.salary),
+    dense_rank() over (partition by c.name order by salary nulls first ),
+--     rank() over(order by salary nulls first) --если поле одинаковое у двоих - rank присудит им одинаковое место и перескочит 1.
+    e.salary                                            -- например 2 первых места, а следующее идёт третье
+FROM company c
+LEFT JOIN employee e on c.id = e.company_id
+ORDER BY c.name;
