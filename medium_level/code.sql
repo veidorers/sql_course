@@ -237,3 +237,25 @@ SELECT * FROM m_employee_view;  --  новый employee не закэширов�
 SELECT * FROM employee_view;
 
 REFRESH MATERIALIZED VIEW m_employee_view;
+
+
+-- 
+--https://www.postgresql.org/docs/current/sql-altertable.a
+
+ALTER TABLE employee
+ADD COLUMN gender INT;
+
+
+UPDATE employee
+SET gender = 0
+WHERE id > 4;
+
+UPDATE employee
+SET gender = 1
+WHERE id <= 4;
+
+ALTER TABLE employee
+ALTER COLUMN gender SET NOT NULL;
+
+ALTER TABLE employee
+DROP COLUMN gender;
