@@ -197,3 +197,43 @@ SELECT c.name,
 FROM company c
 LEFT JOIN employee e on c.id = e.company_id
 ORDER BY c.name;
+
+--
+
+CREATE ViEW employee_view AS
+SELECT c.name,
+       e.last_name,
+       e.salary - lag(e.salary) OVER (order by e.salary),
+       dense_rank() over (partition by c.name order by salary nulls first ),
+       e.salary                                           
+FROM company c
+         LEFT JOIN employee e on c.id = e.company_id
+ORDER BY c.name;
+
+
+SELECT * FROM
+             employee_view
+WHERE last_name = 'Zubkov';     -- VIEW не кешируются!
+
+CREATE MATERIALIZED VIEW m_employee_view AS     --  кешируется
+SELECT c.name,
+       e.last_name,
+       e.salary - lag(e.salary) OVER (order by e.salary),
+       dense_rank() over (partition by c.name order by salary nulls first ),
+       e.salary                                            
+FROM company c
+         LEFT JOIN employee e on c.id = e.company_id
+ORDER BY c.name;
+
+
+SELECT * FROM m_employee_view
+WHERE salary > 1000;
+
+INSERT INTO employee (first_name, last_name, company_id, salary)
+VALUES('Rich', 'Gold', 2, 1370);
+
+
+SELECT * FROM m_employee_view;  --  новый employee не закэширован и его здесь нет!
+SELECT * FROM employee_view;
+
+REFRESH MATERIALIZED VIEW m_employee_view;
