@@ -71,3 +71,57 @@ select count(*) from ticket;        --55
 --При комбинированном flight_id + seat_no индекс будет уникальным. Это значит селективность = 55/55. Это хорошая селективность
 
 -- Много индексов на одну таблицу - плохо. При обновлении таблицы каждый раз будут обновляться индексы. А это другие файлы.
+
+
+-- Query execution plan
+explain SELECT * FROM ticket;
+
+
+-- оптимизаторы бывают двух видов:
+-- синтаксический (rule-based) - устаревший
+-- стоимостной (cost-based)
+
+-- стоимость запроса состоит из:
+-- 1. page_cost (input-output) - стоимость считать информацию (страницы, куски) с жёсткого диска для выполнения запроса. 1 стр = 1.0
+--          (информация берётся из pg_catalog.pg_class)
+-- 2. cpu_cost количество операций, которые нужно выполнить процессору. 1 операция = 0.01
+
+
+SELECT *
+FROM pg_class
+WHERE relname = 'ticket';
+
+SELECT
+    reltuples,
+    relkind,
+    relpages
+FROM pg_class
+WHERE relname = 'ticket';
+
+explain SELECT * FROM ticket;
+-- page_cost = 1 * 1.0 =  1.0
+-- cpu_cost = 55 * 0.01 = 0.55
+-- cost =                 1.55
+
+
+SELECT
+    avg(bit_length(passenger_no) / 8) pass_no,
+    avg(bit_length(passenger_name) / 8) pass_name,
+    avg(bit_length(seat_no) / 8) s_no
+FROM ticket;
+-- width (byte):
+-- bigint - 8, varchar(32) - 6, varchar(128) - 28, bigint - 8, varchar(4) - 2, numeric - 8
+-- 8 + 6 + 28 + 8 + 2 + 8 = 60
+
+
+explain select *
+from ticket
+WHERE passenger_name LIKE 'Иван%'
+    AND seat_no = 'B1';
+
+explain select
+            flight_id,
+            count(*)
+from ticket
+group by flight_id;
+--план запроса читается снизу вверх!
