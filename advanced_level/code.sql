@@ -215,3 +215,91 @@ explain select *
           and number2 > 90000
           and value = '90000';
 -- Просто добавляется дополнительный фильтр после операции BitMapAnd
+
+
+
+-- Query Execution Plan: 3.JOIN
+
+-- обычный explain строит план выполнения запроса. Explain analyze строит план + выполняет запрос, затем сравнивает ожидаемый исход с реальным
+explain analyze
+select * from test1
+where number1 < 1000;
+-- Heap Blocks: exact=X - размер BitMap, который пришлось создавать
+
+
+create table test2(
+    id SERIAL PRIMARY KEY,
+    test1_id INT REFERENCES test1 (id),
+    number1 INT NOT NULL ,
+    number2 INT NOT NULL ,
+    value VARCHAR(32) NOT NULL
+);
+
+
+insert into test2 (test1_id, number1, number2, value)
+select
+    id,
+    random() * number1,
+    random() * number2,
+    value
+from test1;
+
+create index test2_number1_idx on test2 (number1);
+create index test2_number2_idx on test2 (number2);
+
+
+-- Nested Loop
+explain analyze
+select *
+from test1 t1
+join test2 t2 on t1.id = t2.test1_id
+limit 100;
+-- cost и actual_time отображаются для одной строки. Их нужно умножать на loops
+
+-- 3 варианта связывания таблиц:
+-- 1. Nested Loop - используется, когда записей немного. Проходится циклом по таблице, на который был выполнен Full Scan (test2) и связывает через индексы
+-- вторую таблицу (индекс pkey на test1)
+
+-- 2. Hash Join - используется, когда записей много. Он полностью сканирует 1 таблицу (даже если есть индексы), на её основе составляет HashTable,
+-- затем полностью сканирует другую таблицу и выполняет сравнение (в хеш-таблице это О(1))
+-- если Batches > 1, то не всё поместилось в оперативную память и придётся сохранять часть на диск
+
+-- 3. Merge Join - круче всех. Для него необходимо, чтобы оба компонента связывания были отсортированы
+
+
+-- Hash Join
+explain analyze
+select *
+from test1 t1
+         join test2 t2 on t1.id = t2.test1_id;
+-- полностью сканирует test1 (хотя там индекс, но если искать по индексу, то придётся много раз переходить между индексами и таблицей),
+-- загружает в оперативную память и формирует HashTable
+-- полностью сканирует test2 и проверяет Hash Cond (t2.test1_id = t1.id), в хеш-таблице это делается быстро
+
+
+--без order by t1.id выполняет Hash Join. Планировщик решил, что так оптимизированнее
+explain analyze
+select *
+from test1 t1
+    join (select * from test2 order by test1_id) t2
+        on t1.id = t2.test1_id
+order by t1.id;
+-- выполняет Index Scan по test1.id (primary key)
+-- выполняет Seq Scan по test2.test1_id и сортирует его
+-- берёт два получившихся отсортированных множества и при помощи 1 цикла проходится сразу по обоим, связывая одинаковые
+
+
+create index test2_test1_id_idx on test2 (test1_id);
+
+analyze test2;
+
+--дешевле будет создать индекс на внешний ключ, чтобы не приходилось вручную  сортировать
+explain analyze
+select *
+from test1 t1
+         join test2 t2
+              on t1.id = t2.test1_id
+order by t1.id;
+-- но здесь планировщик решил, что будет дешевле использовать HashJoin (если добавить order by t1.id, то он использует merge join)
+
+-- важно помнить, что планировщик решает как выполнять запрос на основе его статистике, закэшированных данных и не всегда он делает так, как мы ожидаем
