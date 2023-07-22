@@ -125,3 +125,93 @@ explain select
 from ticket
 group by flight_id;
 --план запроса читается снизу вверх!
+
+
+-- Query execution plan: 2. Indexes
+explain select *
+from ticket
+where id = 25;
+-- Выполняется Seq Scan, так как таблица ticket содержится в 1 странице на ЖД, а индексы - это отдельный файл и потребовалось бы минимум 2 страницы
+
+
+create table test1 (
+    id SERIAL PRIMARY KEY,
+    number1 INT NOT NULL,
+    number2 INT NOT NULL,
+    value VARCHAR(32) NOT NULL
+);
+
+
+insert into test1(number1, number2, value)
+select random() * g_s,
+       random() * g_s,
+       g_s
+from generate_series(1, 100000) g_s;
+
+
+create index test1_number1_idx ON test1(number1);
+create index test1_number2_idx ON test1(number2);
+
+SELECT
+    relname,
+    reltuples,
+    relkind,
+    relpages
+FROM pg_class
+WHERE relname like 'test1%';
+
+analyze test1;  --  обновить статистику в pg_class по таблице test1
+
+explain select *
+from test1
+where number1 = 1000
+    and value = '1234';
+-- оптимизатор всё равно решает использовать индекс (Index Scan) для поиска и потом просто дополнительно фильтрует.
+
+
+explain select *
+        from test1
+where number1 = 1000
+    or value = '1234';
+-- здесь фулл скан, так как ему нужно будет проверить все строки на "value = '1234'", даже те, у которых другой индекс.
+
+explain select number1
+from test1
+where number1 = 1000;
+-- Index Only Scan
+
+-- 3 варианта использования индексов в запросах:
+-- 1. Index Only Scan - нам не нужно обращаться к самой таблице, работаем лишь в файле индекса (так как возвращаем только сам индекс)
+--      самый лучший вариант
+-- 2. Index Scan - делаем поиск по индексу и дополнительно обращаемся к таблице, чтобы вернуть данные, которых нет в индексе
+-- 3. Bitmap Scan - используется, когда результатов может быть очень много, но мы не хотим использовать Full Scan. Если использовать вместо BitMap Scan
+-- Index Scan, то будет слишком много обращений к самой таблице.
+
+explain select *
+from test1
+where number1 < 1000 and number1 > 90000;
+-- 1. Создаётся BitMap, количество элементов равно количеству строк в test1 и заполняется нулями
+--      0 0 0 0 0 0 0 0 ... 636 times
+-- 2. Проходимся по Index Scan, откуда из каждого индекса берём страницу, на которой он находится в таблице (а не в файле индекса),
+-- то есть откуда будем его считывать. При этом выполняем проверку "number1 < 1000 AND number1 > 90000"
+--      0 0 1 1 0 0 1 0 ... 636 times
+-- 3. Проходимся Bitmap Heap Scan по test1, берём только нужные страницы (Batch`ем, то есть все сразу) и делаем перепроверку
+-- условия "number1 < 1000 AND number1 > 90000" это нужно, так как мы берём страницу, на которой находятся разные элементы
+-- (но есть гарантировано нужный), и они могут не подходить условию
+
+
+
+explain select *
+        from test1
+        where number1 < 1000 and number2 > 90000;
+-- Добавляется BitMapAnd. Он по делает битовые операции And на двух BitMap`ах (для каждого индекса) для каждого числа (0 или 1).
+-- В итоге формируется BitMap для первого индекса, для второго и BitMapAnd, который потом считывается через BitMap Heap и выполняется Recheck Cond
+-- (то же самое актуально для операции OR)
+
+
+explain select *
+        from test1
+        where number1 < 1000
+          and number2 > 90000
+          and value = '90000';
+-- Просто добавляется дополнительный фильтр после операции BitMapAnd
