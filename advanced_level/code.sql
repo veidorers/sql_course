@@ -303,3 +303,51 @@ order by t1.id;
 -- но здесь планировщик решил, что будет дешевле использовать HashJoin (если добавить order by t1.id, то он использует merge join)
 
 -- важно помнить, что планировщик решает как выполнять запрос на основе его статистике, закэшированных данных и не всегда он делает так, как мы ожидаем
+
+
+
+-- Triggers
+
+create table audit(
+    id INT,
+    table_name TEXT,
+    date timestamp
+);
+
+
+create or replace function audit_function() returns trigger
+language plpgsql
+AS $$
+    begin
+        insert into audit(id, table_name, date)
+        values (new.id, tg_table_name, now());
+        return null;
+    end;
+    $$;
+
+
+create trigger audit_aircraft_trigger
+    AFTER update or insert or delete
+    ON aircraft
+    for each row
+    EXECUTE function audit_function();
+
+insert into aircraft (model)
+values ('new boeing');
+
+select * from audit;
+
+create trigger update_ticket_trigger AFTER UPDATE
+    ON ticket
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_function();
+
+UPDATE ticket
+SET cost = cost - 1
+WHERE id = 1;
+
+insert into ticket(passenger_no, passenger_name, flight_id, seat_no, cost)  --не обновило, так как триггер на update
+values('test', 'test', 1, 'test', 100.1);
+
+delete from ticket
+where passenger_no = 'test';        -- тоже не обновило
